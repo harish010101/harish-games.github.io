@@ -1,68 +1,83 @@
 const canvas = document.getElementById('gameCanvas');
 const context = canvas.getContext('2d');
 
-let playerSize = 50;
-let playerX = canvas.width / 2 - playerSize / 2;
-let playerY = canvas.height - playerSize * 2;
-let playerSpeed = 10;
+let bird = {
+    x: 150,
+    y: 150,
+    width: 40,
+    height: 30,
+    gravity: 0.6,
+    lift: -15,
+    velocity: 0
+};
 
-let obstacleSize = 50;
-let obstacleSpeed = 5;
-let obstacles = [];
-
+let pipes = [];
+let frame = 0;
 let score = 0;
-let level = 1;
 let gameOver = false;
 
-function createObstacle() {
-    let x = Math.random() * (canvas.width - obstacleSize);
-    let y = -obstacleSize;
-    obstacles.push({ x: x, y: y });
+function drawBird() {
+    context.fillStyle = 'yellow';
+    context.fillRect(bird.x, bird.y, bird.width, bird.height);
 }
 
-function updateObstacles() {
-    for (let i = 0; i < obstacles.length; i++) {
-        obstacles[i].y += obstacleSpeed;
-        if (obstacles[i].y > canvas.height) {
-            obstacles.splice(i, 1);
+function createPipe() {
+    let pipeWidth = 50;
+    let pipeGap = 200;
+    let pipeHeight = Math.floor(Math.random() * (canvas.height - pipeGap));
+    pipes.push({
+        x: canvas.width,
+        y: 0,
+        width: pipeWidth,
+        height: pipeHeight
+    });
+    pipes.push({
+        x: canvas.width,
+        y: pipeHeight + pipeGap,
+        width: pipeWidth,
+        height: canvas.height - pipeHeight - pipeGap
+    });
+}
+
+function drawPipes() {
+    context.fillStyle = 'green';
+    for (let pipe of pipes) {
+        context.fillRect(pipe.x, pipe.y, pipe.width, pipe.height);
+    }
+}
+
+function updatePipes() {
+    for (let i = 0; i < pipes.length; i++) {
+        pipes[i].x -= 3;
+        if (pipes[i].x + pipes[i].width < 0) {
+            pipes.splice(i, 1);
+            i--;
             score++;
-            if (score % 10 === 0) {
-                level++;
-                obstacleSpeed++;
-            }
         }
     }
-    if (Math.random() < 0.02) {
-        createObstacle();
+}
+
+function checkCollision() {
+    if (bird.y + bird.height > canvas.height || bird.y < 0) {
+        return true;
     }
-}
-
-function checkCollision(obstacle) {
-    return (
-        playerX < obstacle.x + obstacleSize &&
-        playerX + playerSize > obstacle.x &&
-        playerY < obstacle.y + obstacleSize &&
-        playerY + playerSize > obstacle.y
-    );
-}
-
-function drawPlayer() {
-    context.fillStyle = 'white';
-    context.fillRect(playerX, playerY, playerSize, playerSize);
-}
-
-function drawObstacles() {
-    context.fillStyle = 'red';
-    for (let obstacle of obstacles) {
-        context.fillRect(obstacle.x, obstacle.y, obstacleSize, obstacleSize);
+    for (let pipe of pipes) {
+        if (
+            bird.x < pipe.x + pipe.width &&
+            bird.x + bird.width > pipe.x &&
+            bird.y < pipe.y + pipe.height &&
+            bird.y + bird.height > pipe.y
+        ) {
+            return true;
+        }
     }
+    return false;
 }
 
 function drawScore() {
     context.fillStyle = 'white';
     context.font = '20px Arial';
     context.fillText(`Score: ${score}`, 10, 20);
-    context.fillText(`Level: ${level}`, 10, 50);
 }
 
 function drawGameOver() {
@@ -78,23 +93,33 @@ function update() {
         drawGameOver();
         return;
     }
+
+    frame++;
     context.clearRect(0, 0, canvas.width, canvas.height);
-    updateObstacles();
-    drawPlayer();
-    drawObstacles();
+
+    bird.velocity += bird.gravity;
+    bird.y += bird.velocity;
+
+    drawBird();
+
+    if (frame % 75 === 0) {
+        createPipe();
+    }
+
+    updatePipes();
+    drawPipes();
     drawScore();
 
-    for (let obstacle of obstacles) {
-        if (checkCollision(obstacle)) {
-            gameOver = true;
-        }
+    if (checkCollision()) {
+        gameOver = true;
     }
 
     requestAnimationFrame(update);
 }
 
-canvas.addEventListener('mousemove', (event) => {
-    playerX = event.offsetX - playerSize / 2;
+canvas.addEventListener('click', () => {
+    bird.velocity = bird.lift;
 });
 
 update();
+
